@@ -21,7 +21,6 @@ def main(img_path):
     cv.namedWindow('IMPED')
 
     # Equalize historgram
-
     img = cv.equalizeHist(img)
 
     # Initialize parameters
@@ -50,19 +49,19 @@ def main(img_path):
 
             tol = cnt_tolerance/100
             epsilon = tol*cv.arcLength(all_points,True)
-            upper_bound = cv.approxPolyDP(all_points,epsilon,False)
-            lower_bound = cv.approxPolyDP(upper_bound, 0.01*cv.arcLength(upper_bound, True), True)
+            convex_bound = cv.approxPolyDP(all_points,epsilon,False)
+            linear_bound = cv.convexHull(all_points,returnPoints=True)
             
             # Draw the contours on the original image
             display_img = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
-            cv.drawContours(display_img, [upper_bound], -1, (0, 255, 0), 2)
-            #cv.drawContours(display_img, [lower_bound], -1, (0, 0, 255), 2)
+            cv.drawContours(display_img, [convex_bound], -1, (0, 255, 0), 2)
+            cv.drawContours(display_img, [linear_bound], -1, (0, 0, 255), 2)
                       
             # Calculate and display the area
-            convex_area = cv.contourArea(upper_bound) * 2 # Double check x-ray resolution
-            approx_area = cv.contourArea(lower_bound) * 2
-            melt_pool_area = convex_area - approx_area
-            #cv.putText(display_img, f'Area: {melt_pool_area:.2f}', (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            convex_area = cv.contourArea(convex_bound) 
+            linear_area = cv.contourArea(linear_bound)
+            melt_pool_area = linear_area - convex_area 
+            cv.putText(display_img, f'Area: {melt_pool_area:.2f} px', (10, 90), cv.FONT_HERSHEY_PLAIN, 0.9,(255,255,255),2,cv.LINE_4)
             
             cv.imshow('IMPED', display_img)
 
@@ -90,7 +89,7 @@ def main(img_path):
 
         # Apply threshold
         if thresh_val > 0:
-            _, processed_img = cv.threshold(processed_img,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
+            _, processed_img = cv.threshold(processed_img,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU)
         
         # Show the updated image
         cv.imshow('IMPED', processed_img)
@@ -136,7 +135,10 @@ def main(img_path):
             "gaussian": gaussian_val,
             "threshold": thresh_val,
             "open": open_val,
-            "close": close_val
+            "open_itns": open_itns,
+            "close": close_val,
+            "close_itns": close_itns,
+            "tolerance": cnt_tolerance
         }
         with open('config.json', 'w') as file:
             json.dump(config, file, indent=4)
