@@ -20,46 +20,47 @@ def apply_processing(img_path, config, save_dir=None):
     # Apply threshold
     thresh_val = config.get('threshold', 0)
     if thresh_val > 0:
-        _, img = cv.threshold(img, thresh_val, 255, cv.THRESH_BINARY_INV)
+        _, img = cv.threshold(img,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU)
 
     # Apply opening
     open_val = config.get('open', 0)
+    open_itns = config.get('open_itns',0)
     if open_val > 0:
         kernelSize = 2 * open_val + 1
         kernel = np.ones((kernelSize, kernelSize), np.uint8)
-        img = cv.morphologyEx(img, cv.MORPH_OPEN, kernel)
+        img = cv.morphologyEx(img, cv.MORPH_OPEN, kernel, iterations=open_itns)
 
     # Apply closing
     close_val = config.get('close', 0)
+    close_itns = config.get('close_itns',0)
     if close_val > 0:
         kernelSize = 2 * close_val + 1
         kernel = np.ones((kernelSize, kernelSize), np.uint8)
-        img = cv.morphologyEx(img, cv.MORPH_CLOSE, kernel)
+        img = cv.morphologyEx(img, cv.MORPH_CLOSE, kernel, iterations=close_itns)
 
     # Find contours
     _, binary_img = cv.threshold(img, 127, 255, cv.THRESH_BINARY)
     contours, _ = cv.findContours(binary_img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
-    # Calculate upper bound (convex hull)
+    # Calculate bounds
     all_points = np.concatenate(contours)
-    upper_bound = cv.convexHull(all_points)
 
-    # Calculate lower bound (approximation of convex hull)
-    epsilon = 0.01 * cv.arcLength(upper_bound, True)
-    lower_bound = cv.approxPolyDP(upper_bound, epsilon, True)
+    tol = config.get('tolerance',0)/100
+    epsilon = tol*cv.arcLength(all_points,True)
 
-    # Draw contours and bounding rectangle on the image
+    convex_bound = cv.approxPolyDP(all_points,epsilon,False)
+    linear_bound = cv.convexHull(all_points,returnPoints=True)
+
+    # Draw contours
     display_img = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
-    cv.drawContours(display_img, [upper_bound], -1, (0, 255, 0), 2)
-    cv.drawContours(display_img, [lower_bound], -1, (0, 0, 255), 2)
-    x, y, w, h = cv.boundingRect(all_points)
-    cv.rectangle(display_img, (x, y), (x + w, y + h), (255, 0, 0), 2)
-
+    cv.drawContours(display_img, [convex_bound], -1, (0, 255, 0), 2)
+    cv.drawContours(display_img, [linear_bound], -1, (0, 0, 255), 2)
+    
     # Calculate and display the area between upper and lower bounds
-    convex_area = cv.contourArea(upper_bound) * 2  # Double check x-ray resolution
-    approx_area = cv.contourArea(lower_bound) * 2
-    melt_pool_area = convex_area - approx_area
-    cv.putText(display_img, f'Area: {melt_pool_area:.2f}', (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    convex_area = cv.contourArea(convex_bound) 
+    linear_area = cv.contourArea(linear_bound) 
+    melt_pool_area = linear_area - convex_area
+    cv.putText(display_img, f'Area: {melt_pool_area:.2f} px', (10, 90), cv.FONT_HERSHEY_PLAIN, 0.9,(255,255,255),2,cv.LINE_4)
 
     # Save processed image with contours applied
     if save_dir:
