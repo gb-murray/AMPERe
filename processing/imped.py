@@ -38,18 +38,17 @@ def main(img_path):
 
     def find_and_draw_contours():
         global processed_img
-        # Check the image is binary
+
         _, binary_img = cv.threshold(processed_img, 127, 255, cv.THRESH_BINARY)
-        
-        # Find contours
         contours, _ = cv.findContours(binary_img, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
         if contours:
-            # Find the upper and lower bounds
+            # Find the upper and lower bounds of the melt pool
             all_points = np.concatenate(contours)
 
             tol = cnt_tolerance/100
             epsilon = tol*cv.arcLength(all_points,True)
+
             convex_bound = cv.approxPolyDP(all_points,epsilon,False)
             linear_bound = cv.convexHull(all_points,returnPoints=True)
             
@@ -58,7 +57,7 @@ def main(img_path):
             cv.drawContours(display_img, [convex_bound], -1, (0, 255, 0), 2)
             cv.drawContours(display_img, [linear_bound], -1, (0, 0, 255), 2)
                       
-            # Calculate and display the area
+            # Calculate and display the approx melt pool area
             convex_area = cv.contourArea(convex_bound) 
             linear_area = cv.contourArea(linear_bound)
             melt_pool_area = linear_area - convex_area 
@@ -69,7 +68,8 @@ def main(img_path):
     # Function to update the image based on current slider values
     def update_image():
         global gaussian_val, thresh_val, open_val, close_val, processed_img
-        # Apply Gaussian blur
+
+        # Apply Gaussian blur/filtering
         if gaussian_val > 0:
             kernelSize = 2 * gaussian_val + 1
             processed_img = cv.GaussianBlur(img, (kernelSize, kernelSize), 0)
@@ -92,11 +92,11 @@ def main(img_path):
             kernel = np.ones((kernelSize, kernelSize), np.uint8)
             processed_img = cv.morphologyEx(processed_img, cv.MORPH_CLOSE, kernel,iterations=close_itns)
 
+        # Apply render mode
         if mode == 1:
             find_and_draw_contours()
         else:
             cv.imshow('IMPED', processed_img)
-
 
     # Callback functions for trackbars
     def gaussian(val):
@@ -139,7 +139,7 @@ def main(img_path):
         mode = val
         update_image()
 
-    # Function to save the trackbar positions to a JSON file
+    # Function to dump the trackbar positions to a JSON file
     def save_config():
         config = {
             "gaussian": gaussian_val,
