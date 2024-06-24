@@ -66,7 +66,7 @@ def apply_processing(img_path, config, save_dir=None):
     if save_dir:
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-        filename = os.path.basename(img_path)
+        filename = f'processed_{os.path.basename(img_path)}'
         save_path = os.path.join(save_dir, filename)
         cv.imwrite(save_path, display_img)
         print(f"Processed image saved: {save_path}")
