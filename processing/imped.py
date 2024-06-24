@@ -24,14 +24,15 @@ def main(img_path):
     img = cv.equalizeHist(img)
 
     # Initialize parameters
-    global gaussian_val, thresh_val, open_val, close_val, processed_img, close_itns, open_itns, cnt_tolerance
+    global gaussian_val, thresh_val, open_val, close_val, processed_img, close_itns, open_itns, cnt_tolerance, mode
     gaussian_val = 0
     thresh_val = 0
     open_val = 0
     close_val = 0
-    close_itns = 1
-    open_itns = 1
-    cnt_tolerance = 1
+    close_itns = 0
+    open_itns = 0
+    cnt_tolerance = 0
+    mode = 0
 
     processed_img = img.copy()  # Global variable to store the processed image
 
@@ -74,6 +75,10 @@ def main(img_path):
             processed_img = cv.GaussianBlur(img, (kernelSize, kernelSize), 0)
         else:
             processed_img = img.copy()
+
+        # Apply threshold
+        if thresh_val > 0:
+            _, processed_img = cv.threshold(processed_img,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU)
         
         # Apply opening
         if open_val > 0:
@@ -87,12 +92,11 @@ def main(img_path):
             kernel = np.ones((kernelSize, kernelSize), np.uint8)
             processed_img = cv.morphologyEx(processed_img, cv.MORPH_CLOSE, kernel,iterations=close_itns)
 
-        # Apply threshold
-        if thresh_val > 0:
-            _, processed_img = cv.threshold(processed_img,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU)
-        
-        # Show the updated image
-        cv.imshow('IMPED', processed_img)
+        if mode == 1:
+            find_and_draw_contours()
+        else:
+            cv.imshow('IMPED', processed_img)
+
 
     # Callback functions for trackbars
     def gaussian(val):
@@ -128,6 +132,12 @@ def main(img_path):
     def tolerance(val):
         global cnt_tolerance
         cnt_tolerance = val
+        update_image()
+
+    def mode_switch(val):
+        global mode
+        mode = val
+        update_image()
 
     # Function to save the trackbar positions to a JSON file
     def save_config():
@@ -145,13 +155,14 @@ def main(img_path):
         print("Configuration saved to config.json")
 
     # Make all the trackbars
-    cv.createTrackbar('Gaussian', 'IMPED', 0, 5, gaussian)
+    cv.createTrackbar('Gaussian', 'IMPED', 0, 10, gaussian)
     cv.createTrackbar('Toggle Adaptive Threshold', 'IMPED', 0, 1, thresh)
     cv.createTrackbar('Open Kernel', 'IMPED', 0, 5, openimg)
     cv.createTrackbar('Open Iterations', 'IMPED', 1, 10, open_itn)
     cv.createTrackbar('Close Kernel', 'IMPED', 0, 5, close)
     cv.createTrackbar('Close Iterations', 'IMPED', 1, 10, close_itn)
-    cv.createTrackbar('Tolerance', 'IMPED', 1, 100, tolerance)
+    cv.createTrackbar('Tolerance', 'IMPED', 0, 100, tolerance)
+    cv.createTrackbar('View Mode','IMPED',0,1,mode_switch)
     
     # Initialize the display
     update_image()
