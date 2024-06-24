@@ -5,7 +5,7 @@ AMPERe is a proof-of-concept tool for detecting the dimensions of a melt pool fr
 
 # TO-DO
 * Acquire more sample data
-* Tune contour calculation and rendering
+* ~~Tune contour calculation and rendering~~
 * Optimize/refactor for streaming integration
 * Fix extra window bug when launching GUI
 * Fix automatic slider position detection

@@ -6,10 +6,12 @@ import numpy as np
 
 def apply_processing(img_path, config, save_dir=None):
     """Apply image processing with given configuration."""
-    img = cv.imread(img_path, cv.IMREAD_GRAYSCALE)
-    if img is None:
+    original_img = cv.imread(img_path, cv.IMREAD_GRAYSCALE)
+    if original_img is None:
         print(f"Failed to read image: {img_path}")
         return
+
+    img = original_img.copy()
 
     # Apply Gaussian blur
     gaussian_val = config.get('gaussian', 0)
@@ -52,7 +54,7 @@ def apply_processing(img_path, config, save_dir=None):
     linear_bound = cv.convexHull(all_points,returnPoints=True)
 
     # Draw contours
-    display_img = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
+    display_img = cv.cvtColor(original_img, cv.COLOR_GRAY2BGR)
     cv.drawContours(display_img, [convex_bound], -1, (0, 255, 0), 2)
     cv.drawContours(display_img, [linear_bound], -1, (0, 0, 255), 2)
     
