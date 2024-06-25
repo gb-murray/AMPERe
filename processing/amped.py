@@ -12,6 +12,7 @@ def apply_processing(img_path, config, save_dir=None):
         return
 
     processed_img = img.copy()
+    processed_img = cv.equalizeHist(processed_img)
 
     # Apply Gaussian blur
     gaussian_val = config.get('gaussian', 0)
