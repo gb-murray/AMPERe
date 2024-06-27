@@ -1,11 +1,9 @@
 import argparse
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.io
-from skimage import filters, measure, restoration, io
-import os
+from skimage import filters, measure, restoration, io, morphology
 
 def apply_processing(img_path):
     image_pattern = f"{img_path}/*tif"
@@ -25,12 +23,19 @@ def apply_processing(img_path):
     )
     plotly.io.show(fig)
 
+    # Average and remove background
+    def remove_background(image):
+        avg = np.mean(image, axis=0)
+        return image - avg
+
+    image_sequence = remove_background(image_sequence)
+
     # Compute image deltas
-    smoothed = filters.gaussian(image_sequence)
+    smoothed = filters.gaussian(image_sequence, sigma=1.0)
     image_deltas = smoothed[1:, :, :] - smoothed[:-1, :, :]
 
     # Clip lowest and highest intensities
-    p_low, p_high = np.percentile(image_deltas, [5, 90])
+    p_low, p_high = np.percentile(image_deltas, [5, 70])
     clipped = image_deltas - p_low
     clipped[clipped < 0.0] = 0.0
     clipped = clipped / p_high
@@ -40,38 +45,48 @@ def apply_processing(img_path):
     inverted = 1 - clipped
     denoised = restoration.denoise_tv_chambolle(inverted, weight=0.30)
 
+    vis_sequence = denoised.copy() # Copy for later visualization
+
     # Binarize
     thresh_val = filters.threshold_li(denoised)
     binarized = denoised > thresh_val
 
-    # Function to draw bounding box and print dimensions
-    def draw_bounding_box_and_dimensions(image, region_props):
-        minr, minc, maxr, maxc = (region_props[f'bbox-{i}'] for i in range(4))
-        height = maxr - minr
-        width = maxc - minc
+    # Select largest region
+    labeled_0 = measure.label(binarized[0, :, :])
+    props_0 = measure.regionprops_table(labeled_0, properties=('label', 'area', 'bbox'))
+    props_0_df = pd.DataFrame(props_0)
+    props_0_df = props_0_df.sort_values('area', ascending=False)
 
-        fig = px.imshow(image, binary_string=True)
-        fig.add_shape(
-            type='rect', x0=minc, y0=minr, x1=maxc, y1=maxr, line=dict(color='Red')
+    props_0_df.head()
+
+    largest_region_0 = labeled_0 == props_0_df.iloc[0]['label']
+    
+    # Find the convex hull and create a mask
+    chull = morphology.convex_hull_image(largest_region_0)
+    contours = measure.find_contours(chull)
+
+    # Draw a bounding box
+    minr, minc, maxr, maxc = (props_0_df.iloc[0][f'bbox-{i}'] for i in range(4))
+    height = maxr - minr
+    width = maxc - minc
+
+    fig = px.imshow(
+        vis_sequence, 
+        animation_frame=0, 
+        binary_string=True
         )
-        fig.add_annotation(
+    fig.add_shape(
+        type='rect', 
+        x0=minc, y0=minr, x1=maxc, y1=maxr, 
+        line=dict(color='Red')
+        )
+    fig.add_annotation(
             text=f'Height: {height}px, Width: {width}px',
             x=minc - 10, y=minr - 10, showarrow=False,
             font=dict(color="Red", size=12),
             align="left"
         )
-        plotly.io.show(fig)
-
-    # Process each image delta
-    for i in range(len(binarized)):
-        labeled = measure.label(binarized[i, :, :])
-        props = measure.regionprops_table(labeled, properties=('label', 'area', 'bbox'))
-        props_df = pd.DataFrame(props)
-        props_df = props_df.sort_values('area', ascending=False)
-
-        if not props_df.empty:
-            largest_region = labeled == props_df.iloc[0]['label']
-            draw_bounding_box_and_dimensions(largest_region, props_df.iloc[0])
+    plotly.io.show(fig)          
 
 def main(input_dir):
     apply_processing(input_dir)
