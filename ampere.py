@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.io as pio
-from skimage import filters, measure, restoration, io, morphology
+from skimage import filters, measure, restoration, io, morphology, exposure
 
 def apply_processing(img_path):
     image_pattern = f"{img_path}/*tif"
@@ -33,14 +33,15 @@ def apply_processing(img_path):
     clipped = clipped / p_high
     clipped[clipped > 1.0] = 1.0
 
-    # Invert and denoise
+    # Invert, equalize, and denoise
     inverted = 1 - clipped
-    denoised = restoration.denoise_tv_chambolle(inverted, weight=0.30)
+    denoised = restoration.denoise_tv_chambolle(inverted, weight=0.25)
+    eqed = exposure.equalize_hist(denoised)
 
-    vis_sequence = denoised.copy() # Copy for later visualization
+    vis_sequence = inverted.copy() # Copy for later visualization
 
     # Binarize
-    thresh_val = filters.threshold_li(denoised)
+    thresh_val = filters.threshold_li(eqed)
     binarized = denoised > thresh_val  
 
     def draw_bounding_box_and_dimensions(image, region_props, i):
