@@ -24,24 +24,26 @@ def apply_processing(img_path):
 
     # Compute image deltas
     smoothed = filters.gaussian(image_sequence, sigma=1.0)
+    smoothed = filters.laplace(smoothed)
     image_deltas = smoothed[1:, :, :] - smoothed[:-1, :, :]
 
     # Clip lowest and highest intensities
-    p_low, p_high = np.percentile(image_deltas, [5, 80])
+    p_low, p_high = np.percentile(image_deltas, [5, 60])
     clipped = image_deltas - p_low
     clipped[clipped < 0.0] = 0.0
     clipped = clipped / p_high
     clipped[clipped > 1.0] = 1.0
 
     # Invert, equalize, and denoise
-    inverted = 1 - clipped
-    denoised = restoration.denoise_tv_chambolle(inverted, weight=0.25)
-    eqed = exposure.equalize_hist(denoised)
+    eqed = exposure.equalize_hist(clipped)
+
+    inverted = 1 - eqed
+    denoised = restoration.denoise_tv_chambolle(inverted, weight=0.30)
 
     vis_sequence = inverted.copy() # Copy for later visualization
 
     # Binarize
-    thresh_val = filters.threshold_li(eqed)
+    thresh_val = filters.threshold_li(denoised)
     binarized = denoised > thresh_val  
 
     def draw_bounding_box_and_dimensions(image, region_props, i):
