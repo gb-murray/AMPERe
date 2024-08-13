@@ -1,16 +1,16 @@
-# AMPERe
-Automated Melt Pool Edge Renderer
+# AMPERe - Adaptive Melt Pool Edge Recognition
 
-AMPERe is a proof-of-concept tool for detecting the dimensions of a melt pool from x-ray images. It is intended for later implementation with OpenMSI for automated data processing.
+AMPERe is a machine-learning tool for semantically segmenting the key features of LPBF melt pools from x-ray images. It can be used in an OpenMSI stream processer or as an independent processing tool. 
+
+AMPERe utilizes a combination of `scikit image`  open source computer-vision and Meta's Detectron2 implementation of Mask R-CNN to segment images. 
 
 # TO-DO
-* ~~Acquire more sample data~~
-* ~~Tune contour calculation and rendering~~
-* Optimize/refactor for streaming integration
-* ~~Fix extra window bug when launching GUI~~ (deprecated)
-* ~~Fix automatic slider position detection~~
-* ~~Perform scale tests and optimize if appropriate~~
-* ~~Improve threading safety~~ (deprecated)
+* Integrate stream processor
+* Slim down docker environment
+* Migrate model and trainer from Colab
+* Update docs for general use, training instructions, implementation
+* Organize citations
+* Remove deprecated and unused files
 
 # Citations
 
